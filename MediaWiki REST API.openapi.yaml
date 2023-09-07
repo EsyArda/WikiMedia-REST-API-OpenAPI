@@ -1,0 +1,1096 @@
+openapi: 3.0.1
+info:
+  title: Wiki REST
+  description: API REST du serveur MediaWiki
+  version: '1.0'
+servers:
+  - url: https://www.mediawiki.org/w/rest.php/v1
+paths:
+  '/page/{title}/bare':
+    get:
+      tags:
+        - Pages
+      summary: Get Page
+      description: "Returns the standard [page object](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_object) for a wiki page, including the API route to fetch the latest content in HTML, the license, and information about the latest revision."
+      operationId: get-page
+      parameters:
+        - name: title
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Wiki page title
+      responses:
+        '200':
+          description: 'Success: Page found. Returns [page](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_object) with `html_url` property.'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+        '404':
+          description: Title or revision not found
+        '500':
+          description: "[RESTBase](https://www.mediawiki.org/wiki/Special:MyLanguage/RESTBase) not installed or not configured with [VirtualRESTService](https://www.mediawiki.org/wiki/Requests_for_comment/PHP_Virtual_REST_Service)"
+  /search/page:
+    get:
+      tags:
+        - Search
+      summary: Search pages
+      description: Search page
+      operationId: search-page
+      parameters:
+        - name: q
+          in: query
+          description: search terms
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: 'Maximum number of search results to return, between 1 and 100. Default: 50'
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "One of:\n- Success: Results found. Returns a pages object containing an array of search results.\n- Success: No results found. Returns a pages object containing an empty array."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Search_result'
+              example:
+                id: 38930
+                key: Jupiter
+                title: Jupiter
+                excerpt: '<span class="searchmatch">Jupiter</span> is the fifth planet from the Sun and the largest in the Solar System. It is a gas giant with a mass one-thousandth that of the Sun, but two-and-a-half'
+                matched_title: 
+                description: fifth planet from the Sun and largest planet in the Solar System
+                thumbnail:
+                  mimetype: image/jpeg
+                  size: 
+                  width: 200
+                  height: 200
+                  duration: 
+                  url: //upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/200px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg
+        '400':
+          description: "One of :\n- Query parameter not set. Add q parameter.\n- Invalid limit requested. Set limit parameter to between 1 and 100. "
+        '500':
+          description: Search error
+  /search/title:
+    get:
+      tags:
+        - Search
+      summary: Autocomplete page title
+      description: 'Searches wiki page titles, and returns matches between the beginning of a title and the provided search terms. You can use this endpoint for a typeahead search that automatically suggests relevant pages by title.'
+      operationId: autocomplete-page-title
+      parameters:
+        - name: q
+          in: query
+          description: Search terms
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: 'Maximum number of search results to return, between 1 and 100. Default: 50'
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "One of:\n- Success: Results found. Returns a pages object containing an array of search results.\n- Success: No results found. Returns a pages object containing an empty array."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Search_result'
+        '400':
+          description: "One of:\n- Query parameter not set. Add q parameter.\n- Invalid limit requested. Set limit parameter to between 1 and 100."
+        '500':
+          description: Search error
+  /page:
+    post:
+      tags:
+        - Pages
+      summary: Create page
+      description: "Creates a wiki page. The response includes a location header containing the API endpoint to fetch the new page.\n\nThis endpoint is designed to be used with the OAuth extension authorization process. Callers using cookie-based authentication instead must add a CSRF token to the request body. To get a CSRF token, see the Action API. "
+      operationId: create-page
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: The page object to create a new page.
+              type: object
+              required:
+                - source
+                - title
+                - comment
+              properties:
+                source:
+                  type: string
+                  description: Page content in the format specified by the `content_model` property
+                title:
+                  type: string
+                  description: Page title. See [the manual](https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:Page_title) for information about page titles in MediaWiki.
+                comment:
+                  type: string
+                  description: "Reason for creating the page. To allow the comment to be filled in by the server, use `\"comment\": null.`"
+                content_model:
+                  type: string
+                  description: Type of content on the page. Defaults to wikitext. See [the content handlers reference](https://www.mediawiki.org/wiki/Special:MyLanguage/Content_handlers) for content models supported by MediaWiki and extensions.
+                token:
+                  type: string
+                  description: "[CSRF token](https://www.mediawiki.org/wiki/Special:MyLanguage/API:Tokens) required when using cookie-based authentication. Omit this property when authorizing using [OAuth](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:OAuth)."
+            example:
+              source: 'Hello, world!'
+              title: User:<my username>/Sandbox
+              comment: Creating a test page with the REST API
+      responses:
+        '201':
+          description: 'Success: Page created. Returns [page object](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_object) with source property.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+        '400':
+          description: "One of:\n- Missing token when using cookie-based authentication. Add a [CSRF token](https://www.mediawiki.org/wiki/Special:MyLanguage/API:Token) to the request body, or use an [OAuth](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:OAuth) authorization flow.\n- Bad content model. Include a valid content_model based on available content handlers."
+        '409':
+          description: Page already exists
+        '415':
+          description: "Unsupported Content-Type. Add the request header `Content-Type: application/json`."
+  '/page/{title}':
+    put:
+      tags:
+        - Pages
+      summary: Update page
+      description: "Updates or creates a wiki page. This endpoint is designed to be used with the [OAuth extension](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:OAuth) authorization process. Callers using cookie-based authentication instead must add a CSRF `token` to the request body. To get a CSRF token, see the [Action API](https://www.mediawiki.org/wiki/Special:MyLanguage/API:Tokens).\nTo update a page, you need the page's latest revision ID and the page source. First call the [get page source endpoint](https://www.mediawiki.org/wiki/API:REST_API/Reference#Get_page_source), and then use the `source` and `latest.id` to update the page. If latest.id doesn't match the page's latest revision, the API resolves conflicts automatically when possible. In the event of an edit conflict, the API returns a 409 error.\nTo create a page, omit `latest.id` from the request."
+      operationId: update-page
+      parameters:
+        - name: title
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Wiki page title
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: "Update a wiki page."
+              required:
+                - source
+                - comment
+              properties:
+                source:
+                  type: string
+                  description: Page content in the format specified by the content_model property
+                comment:
+                  type: string
+                  description: "Summary of the edit. To allow the comment to be filled in by the server, use `\"comment\": null.`"
+                latest:
+                  type: object
+                  description: "Object identifying the base revision of the edit. You can fetch this information from the [get page source endpoint](https://www.mediawiki.org/wiki/API:REST_API/Reference#Get_page_source)."
+                  properties:
+                    id:
+                      type: integer
+                      description: Identifier for the revision used as the base for the new `source`, required for updating an existing page. To create a page, omit this property. 
+                content_model:
+                  type: string
+                  description: Type of content on the page. Defaults to `wikitext` for new pages or to the existing page's content model. See the [content handlers reference](https://www.mediawiki.org/wiki/Special:MyLanguage/Content_handlers) for content models supported by MediaWiki and extensions.
+                token:
+                  type: string
+                  description: "[CSRF token](https://www.mediawiki.org/wiki/Special:MyLanguage/API:Tokens) required when using cookie-based authentication. Omit this property when authorizing using [OAuth](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:OAuth)."
+            example:
+              source: 'Hello, world!'
+              comment: Testing out the REST API
+              latest:
+                id: 555555555
+      responses:
+        '200':
+          description: "Success: Page updated. Returns [page object](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_object) with `source` property."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+        '201':
+          description: "Success: Page created. Returns [page object](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_object) with `source` property."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+        '400':
+          description: "One of:\n- Missing token when using cookie-based authentication. Add a [CSRF token](https://www.mediawiki.org/wiki/Special:MyLanguage/API:Token) to the request body, or use an [OAuth](https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:OAuth) authorization flow.\n- Bad content model. Ensure that the `content_model` property in the request body matches the `content_model` for the target page."
+        '409':
+          description: "One of:\n- Page already exists. To update the existing page, provide the base revision identifier in `latest.id` in the request body.\n- Edit conflict. The error response includes the differences between the base revision specified in the request and the latest published revision. See the [Wikidiff2 docs](https://www.mediawiki.org/wiki/Special:MyLanguage/Wikidiff2#JSON) for information about the diff format. Requires [Wikidiff2 extension 1.10+](https://www.mediawiki.org/wiki/Special:MyLanguage/Wikidiff2)."
+        '415':
+          description: "Unsupported Content-Type. Add the request header `Content-Type: application/json`."
+    get:
+      tags:
+        - Pages
+      summary: Get page source
+      description: Returns the content of a wiki page in the format specified by the `content_model` property, the license, and information about the latest revision.
+      operationId: get-page-source
+      parameters:
+        - name: title
+          description: Wiki page title
+          in: path
+          required: true
+          schema:
+            type: 'string'
+      responses:
+        '200':
+          description: 'Success: Page found. Returns [page](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_object) with `source` property.'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+        '400':
+          description: The page you requested is not supported by this endpoint
+        '404':
+          description: Content doesn't exist or cannot be loaded
+  '/page/{title}/with_html':
+    get:
+      tags:
+        - Pages
+      summary: Get page offline
+      description: Returns information about a wiki page, including the license, latest revision, and latest content in HTML. 
+      operationId: get-page-offline
+      parameters:
+        - name: title
+          description: Wiki page title
+          in: path
+          required: true
+          schema:
+            type: 'string'
+      responses:
+        '200':
+          description: 'Success: Page found. Returns [page](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_object) with `html` property.'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+        '404':
+          description: Title or revision not found
+        '500':
+          description: '[RESTBase](https://www.mediawiki.org/wiki/Special:MyLanguage/RESTBase) not installed or not configured with [VirtualRESTService](https://www.mediawiki.org/wiki/Requests_for_comment/PHP_Virtual_REST_Service)'
+  '/page/{title}/html':
+    get:
+      tags:
+        - Pages
+      summary: Get HTML
+      description: Returns the latest content of a wiki page in HTML.
+      operationId: get-html
+      parameters:
+        - name: title
+          in: path
+          required: true
+          description: Wiki page title
+          schema:
+            type: 'string'
+      responses:
+        '200':
+          description: 'Success. Returns page HTML in [HTML 2.1.0 format](https://www.mediawiki.org/wiki/Special:MyLanguage/Specs/HTML/2.1.0).'
+        '404':
+          description: Title or revision not found
+        '500':
+          description: '[RESTBase](https://www.mediawiki.org/wiki/Special:MyLanguage/RESTBase) not installed or not configured with [VirtualRESTService](https://www.mediawiki.org/wiki/Requests_for_comment/PHP_Virtual_REST_Service)'
+  '/page/{title}/links/language':
+    get:
+      tags:
+        - Pages
+      summary: Get languages
+      description: 'Searches [connected wikis](https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:Wiki_family) for pages with the same topic in different languages. Returns an array of [page language objects](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_language_object) that include the name of the language, the language code, and the translated page title.'
+      operationId: get-languages
+      parameters:
+        - name: title
+          description: Wiki page title
+          in: path
+          required: true
+          schema:
+            type: 'string'
+      responses:
+        '200':
+          description: 'Success: Languages found. Returns array of [page languages](https://www.mediawiki.org/wiki/API:REST_API/Reference#Page_language_object).'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Page_language"
+        '404':
+          description: Title not found
+
+  '/page/{title}/links/media':
+    get:
+      tags:
+        - "Pages"
+      summary: Get files on page
+      description: Returns information about media files used on a wiki page.
+      operationId: get-files-on-page
+      parameters:
+        - name: title
+          description: Wiki page title
+          in: path
+          required: true
+          schema:
+            type: 'string'
+      responses:
+        '200':
+          description: "One of:\n- Success: Media files found. Returns `files` object containing array of [files](https://www.mediawiki.org/wiki/API:REST_API/Reference#File_object).\n- Success: No media files found. Returns `files` object containing an empty array."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Files"
+        '404':
+          description: Title not found
+        '500':
+          description: Page contains more than 100 media files
+  
+  '/file/{title}':
+    get:
+      tags:
+        - Media files
+      summary: Get file
+      description: 'Returns information about a file, including links to download the file in thumbnail, preview, and original formats.'
+      operationId: get-file
+      parameters:
+        - name: title
+          description: File title
+          in: path
+          required: true
+          schema:
+            type: 'string'
+      responses:
+        '200':
+          description: "Success: file found. Returns [file](https://www.mediawiki.org/wiki/API:REST_API/Reference#File_object)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+        '404':
+          description: Title not found
+
+  '/page/{title}/history':
+    get:
+      tags:
+        - History
+      summary: Get page history
+      description: 'Returns information about the latest revisions to a wiki page, in segments of 20 revisions, starting with the latest revision. The response includes API routes for the next oldest, next newest, and latest revision segments, letting you scroll through page history.'
+      operationId: get-page-history
+      parameters:
+        - name: title
+          description: Wiki page title
+          in: path
+          required: true
+          schema:
+            type: 'string'
+        - name: older_than
+          in: query
+          description: 'Accepts a revision ID. Returns the next 20 revisions older than the given revision ID. '
+          schema:
+            type: integer
+        - name: newer_than
+          in: query
+          description: Accepts a revision ID. Returns the next 20 revisions newer than the given revision ID.
+          schema:
+            type: integer
+        - name: filter
+          in: query
+          description: "Filter that returns only revisions with certain tags, one of:\n\n* `reverted`: Returns only revisions that revert an earlier edit\n* `anonymous`: Returns only revisions made by anonymous users\n* `bot`: Returns only revisions made by bots\n* `minor`: Returns only revisions marked as minor edits\n\nThe API supports one filter per request. "
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "One of:\n- Success: Revisions found. Returns a [page history segment](https://www.mediawiki.org/wiki/API:REST_API/Reference#Response_schema).\n- Success: No revisions found. Returns a [page history segment](https://www.mediawiki.org/wiki/API:REST_API/Reference#Response_schema) with an empty `revisions` array."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page_history_segment"
+        '400':
+          description: "One of:\n- Revision identifier must be greater than 0\n- Parameters `older_than` and `newer_than` cannot both be specified\n- Invalid parameter"
+        '404':
+          description: Title or revision not found
+
+
+  '/page/{title}/history/counts/{type}':
+    get:
+      tags:
+        - History
+      summary: Get page history counts
+      description: Returns data about a page's history.
+      operationId: get-page-history-counts
+      parameters:
+        - name: title
+          in: path
+          description: 'Wiki page title'
+          required: true
+          schema:
+            type: 'string'
+        - name: type
+          in: path
+          description: "Type of count, one of:\n\n* `anonymous`: Edits made by anonymous users. Limit: 10,000\n* `bot`: Edits made by bots. Limit: 10,000\n* `editors`: Users or bots that have edited a page. Limit: 25,000\n* `edits`: Any change to page content. Limit: 30,000\n* `minor`: Edits marked as [minor](https://meta.wikimedia.org/wiki/Special:MyLanguage/Help:Minor_edit). If the minor edit count exceeds 2,000, the API returns a 500 error. Limit: 1,000\n* `reverted`: Edits that revert an earlier edit. Limit: 30,000"
+          required: true
+          schema:
+            type: 'string'
+        - name: from
+          in: query
+          description: "*For `edits` and `editors` types only*\n\nRestricts the count to between two revisions, specified by revision ID. The `from` and `to` query parameters must be used as a pair. The result excludes the edits or editors represented by the `from` and `to` revisions."
+          schema:
+            type: integer
+        - name: to
+          in: query
+          description: "*For `edits` and `editors` types only*\n\nRestricts the count to between two revisions, specified by revision ID. The `from` and `to` query parameters must be used as a pair. The result excludes the edits or editors represented by the `from` and `to` revisions."
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/History_count"
+        '400':
+          description: Invalid parameter or combination of parameters
+        '404':
+          description: Title or revision not found
+        '500':
+          description: Minor edit count exceeds 2000
+
+  '/revision/{id}/bare':
+    get:
+      tags:
+        - History
+      summary: Get revision
+      description: Returns details for an individual revision.
+      operationId: get-revision
+      parameters:
+        - name: id
+          in: path
+          description: Revision ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: "Success: Revision found. Returns a [revision](https://www.mediawiki.org/wiki/API:REST_API/Reference#Revision_object)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Revision"
+        '404':
+          description: Revision not found
+
+
+  '/revision/{from}/compare/{to}':
+    get:
+      tags:
+        - "History"
+      summary: Compare revisions
+      description: 'Returns data that lets you display a line-by-line comparison of two revisions. (See an [example](https://en.wikipedia.beta.wmflabs.org/w/index.php?diff=388864&oldid=388863&title=Main_Page&type=revision).) Only text-based wiki pages can be compared.'
+      operationId: compare-revisions
+      parameters:
+        - name: from
+          in: path
+          description: Revision identifier to use as the base for comparison
+          required: true
+          schema:
+            type: integer
+        - name: to
+          in: path
+          description: Revision identifier to compare to the base
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Success: Revisions found'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wikidiff2_JSON_diff"
+        '400':
+          description: "One of:\n- Revision IDs are for different pages or for pages that can't be compared\n- Invalid content type"
+        '403':
+          description: Revision not publicly accessible
+        '404':
+          description: Revision not found
+        '500':
+          description: Wikidiff2 extension 1.9.0 or later not installed
+
+components:
+  schemas:
+    Search_result:
+      description: The search result object represents a wiki page matching the requested search.
+      required:
+        - id
+        - key
+        - title
+        - excerpt
+        - description
+        - thumbnail
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 'Page identifier'
+        key:
+          type: string
+          description: 'Page title in URL-friendly format'
+        title:
+          type: string
+          description: 'Page title in reading-friendly format'
+        excerpt:
+          type: string
+          description: 'For search pages endpoint: A few lines giving a sample of page content with search terms highlighted with <span class=\"searchmatch\"> tags. For autocomplete page title endpoint: Page title in reading-friendly format.'
+        matched_title:
+          type: string
+          nullable: true
+          description: 'The title of the page redirected from, if the search term originally matched a redirect page or null if search term did not match a redirect page.'
+        description:
+          type: string
+          nullable: true
+          description: 'In Wikimedia projects: Short summary of the page topic based on the corresponding entry on Wikidata or null if no entry exists. See Extension:ShortDescription to populate this field in third-party installations.'
+        thumbnail:
+          type: object
+          nullable: true
+          properties:
+            mimetype:
+              type: string
+              description: 'Thumbnail media type'
+            size:
+              type: integer
+              nullable: true
+              description: 'File size in bytes or null if not available'
+            width:
+              type: integer
+              nullable: true
+              description: 'Maximum recommended image width in pixels or null if not available'
+            height:
+              type: integer
+              nullable: true
+              description: 'Maximum recommended image height in pixels or null if not available'
+            duration:
+              type: integer
+              nullable: true
+              description: 'Length of the video, audio, or multimedia file or null for other media types'
+            url:
+              type: string
+              description: 'URL to download the file'
+      example:
+        id: 38930
+        key: Jupiter
+        title: Jupiter
+        excerpt: '<span class="searchmatch">Jupiter</span> is the fifth planet from the Sun and the largest in the Solar System. It is a gas giant with a mass one-thousandth that of the Sun, but two-and-a-half'
+        matched_title: 
+        description: fifth planet from the Sun and largest planet in the Solar System
+        thumbnail:
+          mimetype: image/jpeg
+          size: 
+          width: 200
+          height: 200
+          duration: 
+          url: //upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/200px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg
+      x-apim-schema-name: Search result
+    Pages:
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Search_result'
+      example:
+        pages:
+          - id: 5433384
+            key: Solar
+            title: Solar
+            excerpt: Solar
+            matched_title: 
+            description: Topics referred to by the same term
+            thumbnail: 
+          - id: 26903
+            key: Solar_System
+            title: Solar System
+            excerpt: Solar System
+            matched_title: 
+            description: The Sun and objects orbiting it
+            thumbnail:
+              mimetype: image/jpeg
+              width: 60
+              height: 34
+              duration: 
+              url: //upload.wikimedia.org/wikipedia/commons/thumb/1/19/Solar_System_true_color.jpg/60px-Solar_System_true_color.jpg
+          - id: 3507365
+            key: Solar_panel
+            title: Solar panel
+            excerpt: Solar panel
+            matched_title: 
+            description: Assembly of photovoltaic cells used to generate electrical power
+            thumbnail:
+              mimetype: image/jpeg
+              width: 60
+              height: 40
+              duration: 
+              url: //upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Photovoltaik_Dachanlage_Hannover_-_Schwarze_Heide_-_1_MW.jpg/60px-Photovoltaik_Dachanlage_Hannover_-_Schwarze_Heide_-_1_MW.jpg
+          - id: 5024887
+            key: Solar_eclipse
+            title: Solar eclipse
+            excerpt: Solar eclipse
+            matched_title: 
+            description: Natural phenomenon wherein the Sun is obscured by the Moon
+            thumbnail:
+              mimetype: image/jpeg
+              width: 60
+              height: 59
+              duration: 
+              url: //upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Solar_eclipse_1999_4.jpg/60px-Solar_eclipse_1999_4.jpg
+          - id: 2352910
+            key: Solar_cell
+            title: Solar cell
+            excerpt: Solar cell
+            matched_title: 
+            description: Photodiode used to produce power from light on a large scale
+            thumbnail:
+              mimetype: image/png
+              width: 60
+              height: 54
+              duration: 
+              url: //upload.wikimedia.org/wikipedia/commons/thumb/9/90/Solar_cell.png/60px-Solar_cell.png
+    Page:
+      type: object
+      description: The page object represents the latest revision of a wiki page.
+      required:
+        - id
+        - key
+        - title
+        - latest
+        - content_model
+        - license
+      properties:
+        id:
+          type: integer
+          description: Page identifier
+        key:
+          type: string
+          description: Page title in URL-friendly format
+        title:
+          type: string
+          description: Page title in reading-friendly format
+        latest:
+          type: object
+          description: "Information about the latest revision, including:\n- `id` (integer): Revision identifier for the latest revision\n- `timestamp` (string): Timestamp of the latest revision in [ISO 8601 format](https://en.wikipedia.org/wiki/ISO_8601)"
+          properties:
+            id:
+              type: integer
+              description: Revision identifier for the latest revision
+            timestamp:
+              type: string
+              description: Timestamp of the latest revision in [ISO 8601 format](https://en.wikipedia.org/wiki/ISO_8601)
+        content_model:
+          type: string
+          description: Type of content on the page. See the [content handlers reference](https://www.mediawiki.org/wiki/Special:MyLanguage/Content_handlers) for content models supported by MediaWiki and extensions.
+        license:
+          type: object
+          description: "Information about the wiki's license, including:\n- `url` (string): URL of the applicable license based on the [$wgRightsUrl](https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:$wgRightsUrl) setting\n- `title` (string): Name of the applicable license based on the [$wgRightsText](https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:$wgRightsText) setting"
+          properties:
+            url:
+              type: string
+              description: URL of the applicable license based on the [$wgRightsUrl](https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:$wgRightsUrl) setting
+            title:
+              type: string
+              description: Name of the applicable license based on the [$wgRightsText](https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:$wgRightsText) setting
+        html_url:
+          type: string
+          description: API route to fetch the content of the page in HTML (Get page only)
+        html:
+          type: string
+          description: Latest page content in HTML, following the (HTML 2.1.0 specification)[https://www.mediawiki.org/wiki/Special:MyLanguage/Specs/HTML/2.1.0] (Get page offline only)
+        source:
+          type: string
+          description: Latest page content in the format specified by the `content_model` property (Get page source, create page, and update page only)
+      example:
+        id: 9228
+        key: Earth
+        title: Earth
+        latest:
+          id: 963613515
+          timestamp: '2020-06-20T20:05:55Z'
+        content_model: wikitext
+        license:
+          url: "//creativecommons.org/licenses/by-sa/3.0/"
+          title: Creative Commons Attribution-Share Alike 3.0
+        html_url: https://en.wikipedia.org/w/rest.php/v1/page/Earth/html
+    
+    Page_language:
+      type: object
+      description: The page language object represents a wiki page and its language.
+      required:
+        - code
+        - name
+        - key
+        - title
+      properties:
+        code:
+          type: string
+          description: Language code. For Wikimedia projects, see the [site matrix on Meta-Wiki](https://meta.wikimedia.org/wiki/Special:SiteMatrix).
+        name:
+          type: string
+          description: Translated language name
+        key:
+          type: string
+          description: Translated page title in URL-friendly format
+        title:
+          type: string
+          description: Translated page title in reading-friendly format
+      example:
+        code: pl
+        name: polski
+        key: Ziemia
+        title: Ziemia
+
+    File:
+      type: object
+      description: The file object represents a file uploaded to a wiki.
+      required:
+        - title
+        - file_description_url
+        - latest
+        - preferred
+        - original
+      properties:
+        title:
+          description: File title
+          type: string
+        file_description_url:
+          description: URL for the page describing the file, including license information and other metadata
+          type: string
+        latest:
+          description: Object containing information about the latest revision to the file.
+          type: object
+          properties:
+            timestamp:
+              type: string
+              description: "Last modified timestamp in [ISO 8601 format](https://en.wikipedia.org/wiki/ISO_8601) format"
+            user:
+              description: Object containing information about the user who uploaded the file
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: User identifier
+                name:
+                  type: string
+                  description: Username
+        preferred:
+          type: object
+          description: Information about the file's preferred preview format
+          $ref: "#/components/schemas/File_information"
+        original:
+          type: object
+          description: Information about the file's original format
+          $ref: "#/components/schemas/File_information"
+        thumbnail:
+          type: object
+          description: "([Get file](https://www.mediawiki.org/wiki/API:REST_API/Reference#Get_file) only) Information about the file's thumbnail format"
+          $ref: "#/components/schemas/File_information"
+      example:
+        title: The Blue Marble.jpg
+        file_description_url: "//commons.wikimedia.org/wiki/File:The_Blue_Marble.jpg"
+        latest:
+          timestamp: '2011-12-07T05:11:41Z'
+          user:
+            id: 811185
+            name: Ultimate Roadgeek
+        preferred:
+          mediatype: BITMAP
+          size:
+          width: 599
+          height: 599
+          duration:
+          url: https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/The_Blue_Marble.jpg/599px-The_Blue_Marble.jpg
+        original:
+          mediatype: BITMAP
+          size: 7011595
+          width: 3000
+          height: 3002
+          duration:
+          url: https://upload.wikimedia.org/wikipedia/commons/7/78/The_Blue_Marble.jpg
+        thumbnail:
+          mediatype: BITMAP
+          size:
+          width: 1023
+          height: 1024
+          duration:
+          url: https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/The_Blue_Marble.jpg/1023px-The_Blue_Marble.jpg
+
+    File_information:
+      type: object
+      description: Information about the file's preferred preview format, original format, and thumbnail format
+      required:
+        - mediatype
+        - size
+        - width
+        - height
+        - duration
+        - url
+      properties:
+        mediatype:
+          type: string
+          description: "The file type, one of: BITMAP, DRAWING, AUDIO, VIDEO, MULTIMEDIA, UNKNOWN, OFFICE, TEXT, EXECUTABLE, ARCHIVE, or 3D"
+        size:
+          type: integer
+          description: File size in bytes or `null` if not available
+        width:
+          type: integer
+          description: Maximum recommended image width in pixels or `null` if not available
+        height:
+          type: integer
+          description: Maximum recommended image height in pixels or `null` if not available
+        duration:
+          type: integer
+          description: The length of the video, audio, or multimedia file or `null` for other media types
+        url:
+          type: string
+          description: URL to download the file
+
+    Files:
+      type: object
+      description: Contains an array of files or an empty array
+      properties:
+        files:
+          type: array
+          items:
+            type: object
+            $ref: "#/components/schemas/File"
+
+    Revision:
+      type: object
+      description: The revision object represents a change to a wiki page.
+      required:
+        - id
+        - user
+        - timestamp
+        - comment
+        - size
+        - delta
+        - minor
+      properties:
+        id:
+          type: integer
+          description: Revision identifier
+        page:
+          type: object
+          description: ([Get revision](https://www.mediawiki.org/wiki/API:REST_API/Reference#Get_revision) only) Object containing information about the page
+          properties:
+            page_id:
+              type: integer
+              description: Page identifier
+            title:
+              type: string
+              description: Page title in reading-friendly format
+        user:
+          type: object
+          description: "Object containing information about the user that made the edit\nFor anonymous users, the `name` contains the originating IP address, and the `id` is null."
+          properties:
+            name:
+              type: string
+              description: Username
+            id:
+              type: integer
+              description: User identifier
+        timestamp:
+          type: string
+          description: Time of the edit in [ISO 8601 format](https://en.wikipedia.org/wiki/ISO_8601)
+        comment:
+          type: string
+          description: Comment or edit summary written by the editor. For revisions without a comment, the API returns `null` or `""`.
+        size:
+          type: integer
+          description: Size of the revision in bytes
+        delta:
+          type: integer
+          description: "Number of bytes changed, positive or negative, between a revision and the preceding revision (example: `-20`). If the preceding revision is unavailable, the API returns `null`."
+        minor:
+          type: boolean
+          description: "Set to true for edits marked as [minor](https://meta.wikimedia.org/wiki/Special:MyLanguage/Help:Minor_edit)"
+      example:
+        id: 931281281
+        page:
+          id: 38930
+          title: Jupiter
+        size: 126009
+        minor: false
+        timestamp: '2019-12-18T01:39:24Z'
+        user:
+          id: 27015025
+          name: InternetArchiveBot
+        comment: 'Bluelinking 2 books for [[WP:V|verifiability]].) #IABot (v2.1alpha3'
+        delta: 231
+
+    Page_history_segment:
+      description: Information about the latest revisions to a wiki page
+      type: object
+      required:
+        - latest
+        - revisions
+      properties:
+        latest:
+          description: API route to get the latest revisions
+          type: string
+        older:
+          description: If available, API route to get the prior revisions
+          type: string
+        newer:
+          type: string
+          description: If available, API route to get the following revisions
+        revisions:
+          description: Array of 0-20 [revision objects](https://www.mediawiki.org/wiki/API:REST_API/Reference#Revision_object)
+          type: array
+          items:
+            type: object
+            $ref: "#/components/schemas/Revision"
+
+    History_count:
+      description: Data about a page's history
+      type: object
+      required:
+        - count
+        - limit
+      properties:
+        count:
+          type: integer
+          description: "The value of the data point up to the type's limit. If the value exceeds the limit, the API returns the limit as the value of count and sets the `limit` property to true."
+        limit:
+          type: boolean
+          description: Returns true if the data point exceeds the type's limit.
+
+    Wikidiff2_JSON_diff:
+      description: Data that lets you display a line-by-line comparison of two revisions
+      type: object
+      required:
+        - from
+        - to
+        - from.id
+        - to.id
+        - from.slot_role
+        - to.slot_rule
+        - from.sections
+        - to.sections
+        - diff
+        - diff.type
+        - diff.text
+        - diff.offset
+      properties:
+        from:
+          type: object
+          description: Information about the base revision used in the comparison
+          properties:
+            id:
+              type: integer
+              description: Revision identifier
+            slot_role:
+              type: string
+              description: Area of the page being compared, usually `main`
+            sections:
+              description: "Array of objects representing section headings"
+              type: array
+              items:
+                type: object
+                properties:
+                  level:
+                    description: Heading level, 1 through 4
+                    type: integer
+                  heading:
+                    description: Text of the heading line, in wikitext
+                    type: string
+                  offset:
+                    type: integer
+                    description: Location of the heading, in bytes from the beginning of the page
+        to:
+          type: object
+          description: Information about the revision being compared to the base revision
+          properties:
+            id:
+              type: integer
+              description: Revision identifier
+            slot_role:
+              type: string
+              description: Area of the page being compared, usually `main`
+            sections:
+              description: "Array of objects representing section headings"
+              type: array
+              items:
+                type: object
+                properties:
+                  level:
+                    description: Heading level, 1 through 4
+                    type: integer
+                  heading:
+                    description: Text of the heading line, in wikitext
+                    type: string
+                  offset:
+                    type: integer
+                    description: Location of the heading, in bytes from the beginning of the page
+        diff:
+          description: Each object in the `diff` array represents a line in a visual, line-by-line comparison between the two revisions.
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: integer
+                description: "The type of change represented by the diff object, either:\n- `0`: A line with the same content in both revisions, included to provide context when viewing the diff. The API returns up to two context lines around each change.\n- `1`: A line included in the to revision but not in the from revision.\n- `2`: A line included in the from revision but not in the to revision.\n- `3`: A line containing text that differs between the two revisions. (For changes to paragraph location as well as content, see type 5.)\n- `4`: When a paragraph's location differs between the two revisions, a type 4 object represents the location in the from revision.\n- `5`: When a paragraph's location differs between the two revisions, a type 5 object represents the location in the to revision. This type can also include word-level differences between the two revisions."
+        lineNumber:
+          type: integer
+          description: The line number of the change based on the to revision.
+        text:
+          type: string
+          description: The text of the line, including content from both revisions. For a line containing text that differs between the two revisions, you can use `highlightRanges` to visually indicate added and removed text. For a line containing a new line, the API returns the text as `""` (empty string).
+        highlightRanges:
+          description: An array of objects that indicate where and in what style text should be highlighted to visually represent changes.
+          type: array
+          items:
+            type: object
+            properties:
+              start:
+                type: integer
+                description: Where the highlighted text should start, in the number of bytes from the beginning of the line.
+              lenght:
+                type: integer
+                description: The length of the highlighted section, in bytes.
+              type:
+                type: integer
+                description: "The type of highlight:\n- `0` indicates an addition.\n- `1` indicates a deletion."
+        moveInfo:
+          type: object
+          description: Visual indicators to use when a paragraph's location differs between the two revisions. `moveInfo` objects occur in pairs within the diff.
+          properties:
+            id:
+              type: string
+              description: The ID of the paragraph described by the diff object.
+            linkId:
+              type: string
+              description: "The ID of the corresponding paragraph.\n- For type 4 diff objects, `linkId` represents the location in the to revision.\n- For type 5 diff objects, `linkId` represents the location in the from revision."
+            linkDirection:
+              type: integer
+              description: "A visual indicator of the relationship between the two locations. You can use this property to display an arrow icon within the diff.\n- `0` indicates that the `linkId` paragraph is lower on the page than the `id` paragraph.\n- `1` indicates that the `linkId` paragraph is higher on the page than the `id` paragraph."
+            offset:
+              type: object
+              description: The location of the line in bytes from the beginning of the page
+              properties:
+                from:
+                  type: integer
+                  description: The first byte of the line in the `from` revision. A `null` value indicates that the line doesn't exist in the `from` revision.
+                to:
+                  type: integer
+                  description: "The first byte of the line in the `to` revision. A `null` value indicates that the line doesn't exist in the `to` revision."
+
+  securitySchemes:
+    apiKeyHeader:
+      type: apiKey
+      name: Ocp-Apim-Subscription-Key
+      in: header
+    apiKeyQuery:
+      type: apiKey
+      name: subscription-key
+      in: query
+security:
+  - apiKeyHeader: [ ]
+  - apiKeyQuery: [ ]
