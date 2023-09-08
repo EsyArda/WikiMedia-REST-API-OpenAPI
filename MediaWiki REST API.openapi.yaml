@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
-  title: Wiki REST
-  description: API REST du serveur MediaWiki
+  title: MediaWiki REST API
+  description: MediaWiki REST API based on the API reference on [WikiMedia's website](https://www.mediawiki.org/wiki/API:REST_API/Reference).
   version: '1.0'
 servers:
   - url: https://www.mediawiki.org/w/rest.php/v1

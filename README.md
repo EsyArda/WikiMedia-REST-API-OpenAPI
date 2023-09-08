@@ -1,7 +1,7 @@
 # WikiMedia REST API OpenAPI 
 
 OpenAPI file for the MediaWiki Rest API.
-The official documentation can be founde on [WikiMedia's website](https://www.mediawiki.org/wiki/API:REST_API/Reference).
+The official documentation can be found on [WikiMedia's website](https://www.mediawiki.org/wiki/API:REST_API/Reference).
 
 **Warning** : I'm new to writing OpenAPI files. There may be some errors. Also, I will not update it if the reference changes.
 
