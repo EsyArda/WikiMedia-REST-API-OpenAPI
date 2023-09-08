@@ -1081,16 +1081,3 @@ components:
                 to:
                   type: integer
                   description: "The first byte of the line in the `to` revision. A `null` value indicates that the line doesn't exist in the `to` revision."
-
-  securitySchemes:
-    apiKeyHeader:
-      type: apiKey
-      name: Ocp-Apim-Subscription-Key
-      in: header
-    apiKeyQuery:
-      type: apiKey
-      name: subscription-key
-      in: query
-security:
-  - apiKeyHeader: [ ]
-  - apiKeyQuery: [ ]
