@@ -131,6 +131,7 @@ paths:
                   description: Page title. See [the manual](https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:Page_title) for information about page titles in MediaWiki.
                 comment:
                   type: string
+                  nullable: true
                   description: "Reason for creating the page. To allow the comment to be filled in by the server, use `\"comment\": null.`"
                 content_model:
                   type: string
@@ -155,6 +156,7 @@ paths:
           description: Page already exists
         '415':
           description: "Unsupported Content-Type. Add the request header `Content-Type: application/json`."
+
   '/page/{title}':
     put:
       tags:
@@ -184,6 +186,7 @@ paths:
                   description: Page content in the format specified by the content_model property
                 comment:
                   type: string
+                  nullable: true
                   description: "Summary of the edit. To allow the comment to be filled in by the server, use `\"comment\": null.`"
                 latest:
                   type: object
@@ -789,6 +792,7 @@ components:
         thumbnail:
           type: object
           description: "([Get file](https://www.mediawiki.org/wiki/API:REST_API/Reference#Get_file) only) Information about the file's thumbnail format"
+          nullable: true
           $ref: "#/components/schemas/File_information"
       example:
         title: The Blue Marble.jpg
@@ -837,15 +841,19 @@ components:
         size:
           type: integer
           description: File size in bytes or `null` if not available
+          nullable: true
         width:
           type: integer
           description: Maximum recommended image width in pixels or `null` if not available
+          nullable: true
         height:
           type: integer
           description: Maximum recommended image height in pixels or `null` if not available
+          nullable: true
         duration:
           type: integer
           description: The length of the video, audio, or multimedia file or `null` for other media types
+          nullable: true
         url:
           type: string
           description: URL to download the file
@@ -895,18 +903,21 @@ components:
             id:
               type: integer
               description: User identifier
+              nullable: true
         timestamp:
           type: string
           description: Time of the edit in [ISO 8601 format](https://en.wikipedia.org/wiki/ISO_8601)
         comment:
           type: string
           description: Comment or edit summary written by the editor. For revisions without a comment, the API returns `null` or `""`.
+          nullable: true
         size:
           type: integer
           description: Size of the revision in bytes
         delta:
           type: integer
           description: "Number of bytes changed, positive or negative, between a revision and the preceding revision (example: `-20`). If the preceding revision is unavailable, the API returns `null`."
+          nullable: true
         minor:
           type: boolean
           description: "Set to true for edits marked as [minor](https://meta.wikimedia.org/wiki/Special:MyLanguage/Help:Minor_edit)"
@@ -1037,47 +1048,49 @@ components:
               type:
                 type: integer
                 description: "The type of change represented by the diff object, either:\n- `0`: A line with the same content in both revisions, included to provide context when viewing the diff. The API returns up to two context lines around each change.\n- `1`: A line included in the to revision but not in the from revision.\n- `2`: A line included in the from revision but not in the to revision.\n- `3`: A line containing text that differs between the two revisions. (For changes to paragraph location as well as content, see type 5.)\n- `4`: When a paragraph's location differs between the two revisions, a type 4 object represents the location in the from revision.\n- `5`: When a paragraph's location differs between the two revisions, a type 5 object represents the location in the to revision. This type can also include word-level differences between the two revisions."
-        lineNumber:
-          type: integer
-          description: The line number of the change based on the to revision.
-        text:
-          type: string
-          description: The text of the line, including content from both revisions. For a line containing text that differs between the two revisions, you can use `highlightRanges` to visually indicate added and removed text. For a line containing a new line, the API returns the text as `""` (empty string).
-        highlightRanges:
-          description: An array of objects that indicate where and in what style text should be highlighted to visually represent changes.
-          type: array
-          items:
-            type: object
-            properties:
-              start:
+              lineNumber:
                 type: integer
-                description: Where the highlighted text should start, in the number of bytes from the beginning of the line.
-              lenght:
-                type: integer
-                description: The length of the highlighted section, in bytes.
-              type:
-                type: integer
-                description: "The type of highlight:\n- `0` indicates an addition.\n- `1` indicates a deletion."
-        moveInfo:
-          type: object
-          description: Visual indicators to use when a paragraph's location differs between the two revisions. `moveInfo` objects occur in pairs within the diff.
-          properties:
-            id:
-              type: string
-              description: The ID of the paragraph described by the diff object.
-            linkId:
-              type: string
-              description: "The ID of the corresponding paragraph.\n- For type 4 diff objects, `linkId` represents the location in the to revision.\n- For type 5 diff objects, `linkId` represents the location in the from revision."
-            linkDirection:
-              type: integer
-              description: "A visual indicator of the relationship between the two locations. You can use this property to display an arrow icon within the diff.\n- `0` indicates that the `linkId` paragraph is lower on the page than the `id` paragraph.\n- `1` indicates that the `linkId` paragraph is higher on the page than the `id` paragraph."
-            offset:
-              type: object
-              description: The location of the line in bytes from the beginning of the page
-              properties:
-                from:
-                  type: integer
-                  description: The first byte of the line in the `from` revision. A `null` value indicates that the line doesn't exist in the `from` revision.
-                to:
-                  type: integer
-                  description: "The first byte of the line in the `to` revision. A `null` value indicates that the line doesn't exist in the `to` revision."
+                description: The line number of the change based on the to revision.
+              text:
+                type: string
+                description: The text of the line, including content from both revisions. For a line containing text that differs between the two revisions, you can use `highlightRanges` to visually indicate added and removed text. For a line containing a new line, the API returns the text as `""` (empty string).
+              highlightRanges:
+                description: An array of objects that indicate where and in what style text should be highlighted to visually represent changes.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    start:
+                      type: integer
+                      description: Where the highlighted text should start, in the number of bytes from the beginning of the line.
+                    lenght:
+                      type: integer
+                      description: The length of the highlighted section, in bytes.
+                    type:
+                      type: integer
+                      description: "The type of highlight:\n- `0` indicates an addition.\n- `1` indicates a deletion."
+              moveInfo:
+                type: object
+                description: Visual indicators to use when a paragraph's location differs between the two revisions. `moveInfo` objects occur in pairs within the diff.
+                properties:
+                  id:
+                    type: string
+                    description: The ID of the paragraph described by the diff object.
+                  linkId:
+                    type: string
+                    description: "The ID of the corresponding paragraph.\n- For type 4 diff objects, `linkId` represents the location in the to revision.\n- For type 5 diff objects, `linkId` represents the location in the from revision."
+                  linkDirection:
+                    type: integer
+                    description: "A visual indicator of the relationship between the two locations. You can use this property to display an arrow icon within the diff.\n- `0` indicates that the `linkId` paragraph is lower on the page than the `id` paragraph.\n- `1` indicates that the `linkId` paragraph is higher on the page than the `id` paragraph."
+              offset:
+                type: object
+                description: The location of the line in bytes from the beginning of the page
+                properties:
+                  from:
+                    type: integer
+                    description: The first byte of the line in the `from` revision. A `null` value indicates that the line doesn't exist in the `from` revision.
+                    nullable: true
+                  to:
+                    type: integer
+                    description: "The first byte of the line in the `to` revision. A `null` value indicates that the line doesn't exist in the `to` revision."
+                    nullable: true
